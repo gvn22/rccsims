@@ -12,8 +12,9 @@ Nx  = 64
 Ny  = 64
 Nz  = 64
 
-Lx  = 2.0*np.pi
-Ly  = 2.0*np.pi
+Lc  = 4.8154
+Lx  = 20*Lc
+Ly  = 20*Lc
 Lz  = 1.0
 
 x_basis = de.Fourier('x', Nx, interval=(0.0,Lx), dealias=3/2)
@@ -30,7 +31,7 @@ qg.meta['u']['z']['parity']     = +1
 qg.meta['v']['z']['parity']     = +1
 qg.meta['w']['z']['parity']     = -1
 
-qg.parameters['Ra']             = 10.0
+qg.parameters['Ra']             = 20.0
 qg.parameters['Axy']            = Lx*Ly
 
 qg.substitutions['J(A,B)']      = "dx(A)*dy(B) - dy(A)*dx(B)"
