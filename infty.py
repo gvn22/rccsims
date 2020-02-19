@@ -77,11 +77,21 @@ ts      = de.timesteppers.RK443
 solver  = problem.build_solver(ts)
 logger.info('Building solver... success!')
 
-# random temperature anomalies
-tf = solver.state['tf']
-tf['g'] = np.random.rand(*tf['g'].shape)
+# Initial Condition
+gshape  = domain.dist.grid_layout.global_shape(scales=1)
+slices  = domain.dist.grid_layout.slices(scales=1)
+rand    = np.random.RandomState(seed=42)
+noise   = rand.standard_normal(gshape)[slices]
+pert    =  1e-1*noise
+tf      = solver.state['tf']
+tz      = solver.state['tz']
+tf['g'] = pert
+tz['g'] = -1.0
 
-dt = 0.01
+# tf = solver.state['tf']
+# tf['g'] = np.random.rand(*tf['g'].shape)
+
+dt = 1e-4
 
 solver.stop_sim_time = 1000
 solver.stop_wall_time = np.inf
