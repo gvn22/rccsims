@@ -22,7 +22,7 @@ y_basis = de.Fourier('y', Ny, interval=(0.0,Ly), dealias=3/2)
 z_basis = de.SinCos ('z', Nz, interval=(0.0,Lz), dealias=3/2)
 
 domain  = de.Domain([x_basis, y_basis, z_basis], grid_dtype=np.float64)
-qg = de.IVP(domain, variables=['tf','fi','si','u','v','w'], time = 't')
+qg = de.IVP(domain, variables=['tf','fi','si','u','v','w','zeta'], time = 't')
 
 qg.meta['tf']['z']['parity']    = -1
 qg.meta['si']['z']['parity']    = +1
@@ -30,6 +30,7 @@ qg.meta['fi']['z']['parity']    = -1
 qg.meta['u']['z']['parity']     = +1
 qg.meta['v']['z']['parity']     = +1
 qg.meta['w']['z']['parity']     = -1
+qg.meta['zeta']['z']['parity']  = +1
 
 qg.parameters['Ra']             = 20.0
 qg.parameters['Pr']             = 1.0
@@ -38,10 +39,10 @@ qg.parameters['Axy']            = Lx*Ly
 qg.substitutions['J(A,B)']      = "dx(A)*dy(B) - dy(A)*dx(B)"
 qg.substitutions['L(A)']        = "dx(dx(A)) + dy(dy(A))"
 qg.substitutions['D(A)']        = "L(L(A))"
-qg.substitutions['M(A)']        = "- 1 + Pr*integ(integ(A - integ(A,'z'),'y'),'x')/Axy"
+qg.substitutions['M(A,B)']        = "- 1 + Pr*integ(integ(L(A)*B - integ(L(A)*B,'z'),'y'),'x')/Axy"
 
 # equations 2.27(a-c) + 3.1 [Sprague, 2006]
-qg.add_equation("dt(tf) - L(tf)/Pr = - J(si,tf) + L(fi)*M(fi*tf)")
+qg.add_equation("dt(tf) - L(tf)/Pr = - J(si,tf) + L(fi)*M(fi,tf)")
 
 qg.add_equation("dt(L(si)) - dz(L(fi)) - D(si) = J(si,L(si))",condition="(nx != 0) and (ny != 0)")
 qg.add_equation("fi = 0",condition="(nx == 0) or (ny == 0)")
@@ -53,6 +54,7 @@ qg.add_equation("si = 0",condition="(nx == 0) or (ny == 0)")
 qg.add_equation("u + dy(si) = 0")
 qg.add_equation("v - dx(si) = 0")
 qg.add_equation("w - L(fi) = 0")
+qg.add_equation("zeta - L(si) = 0")
 
 ts      = de.timesteppers.RK443
 solver  = qg.build_solver(ts)
@@ -76,21 +78,25 @@ CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=1,
                      max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
 CFL.add_velocities(('u', 'v','w'))
 
-snap = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10)
+snap = solver.evaluator.add_file_handler('fin/snapshots', sim_dt=0.01, max_writes=10)
 
 # vorticity
-snap.add_task("interp(si, z=0.0)", scales=1, name='w bottom')
-snap.add_task("interp(si, z=0.5)", scales=1, name='w midplane')
-snap.add_task("interp(si, z=1.0)", scales=1, name='w top')
+snap.add_task("interp(zeta, z=0.0)", scales=1, name='w bottom')
+snap.add_task("interp(zeta, z=0.5)", scales=1, name='w midplane')
+snap.add_task("interp(zeta, z=1.0)", scales=1, name='w top')
 
 # temperature anomaly
-snap.add_task("interp(tf, z=0.0)", scales=1, name='f bottom')
+snap.add_task("interp(tf, z=0.5)", scales=1, name='f bottom')
 snap.add_task("interp(tf, z=0.5)", scales=1, name='f midplane')
-snap.add_task("interp(tf, z=1.0)", scales=1, name='f top')
+snap.add_task("interp(tf, z=0.5)", scales=1, name='f top')
+
+state = solver.evaluator.add_file_handler('fin/state', sim_dt=0.01, max_writes=100, mode='append')
+state.add_system(solver.state)
 
 while solver.ok:
 
-    if(solver.iteration%20 == 0):
-        logger.info('Iteration: %i, Mean: %e' %(solver.iteration, np.mean(tf['g']**2)))
     dt = CFL.compute_dt()
     dt = solver.step(dt)
+
+    if(solver.iteration%10 == 0):
+        logger.info('Iteration: %i, Step: %e' %(solver.iteration, dt))
