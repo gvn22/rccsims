@@ -27,6 +27,7 @@ import numpy as np
 from dedalus import public as de
 from dedalus.extras import flow_tools
 
+import time
 import logging
 root = logging.root
 for h in root.handlers:
@@ -82,7 +83,7 @@ gshape  = domain.dist.grid_layout.global_shape(scales=1)
 slices  = domain.dist.grid_layout.slices(scales=1)
 rand    = np.random.RandomState(seed=42)
 noise   = rand.standard_normal(gshape)[slices]
-pert    =  1e-1*noise
+pert    = 1e-1*noise
 tf      = solver.state['tf']
 tz      = solver.state['tz']
 tf['g'] = pert
@@ -91,40 +92,53 @@ tz['g'] = -1.0
 # tf = solver.state['tf']
 # tf['g'] = np.random.rand(*tf['g'].shape)
 
-dt = 1e-4
+dt = 5e-4
 
-solver.stop_sim_time = 1000
-solver.stop_wall_time = np.inf
-solver.stop_iteration = np.inf
+solver.stop_sim_time    = 1000
+solver.stop_wall_time   = 12*60.
+solver.stop_iteration   = np.inf
 
-tz = solver.state['tz']
-
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=1,
-                     max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
+                            max_change=1.25, min_change=0.5, max_dt=0.1, threshold=0.05)
 CFL.add_velocities(('u', 'v','w'))
 
-snap = solver.evaluator.add_file_handler('inf/snapshots', sim_dt=0.2, max_writes=100)
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.05, max_writes=10, mode='overwrite')
+snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bottom')
+snapshots.add_task("interp(w, y=0.5)",  scales=1, name='w vertical')
+snapshots.add_task("interp(tf, y=0.5)", scales=1, name='tf vertical')
+snapshots.add_task("interp(tf, z=0.0)", scales=1, name='tf bottom')
+snapshots.add_task("interp(tf, z=1.0)", scales=1, name='tf top')
 
-snap.add_task("interp(ze, z=0.0)", scales=1, name='w bottom')
-snap.add_task("interp(ze, z=0.5)", scales=1, name='w midplane')
-snap.add_task("interp(ze, z=1.0)", scales=1, name='w top')
+profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.2, max_writes=100)
+profiles.add_task("sqrt(integ(integ(tf*tf, 'x'), 'y'))", scales=1, name='tf_rms')
+profiles.add_task("sqrt(integ(integ(u*u, 'x'), 'y'))", scales=1, name='u_rms')
+profiles.add_task("sqrt(integ(integ(v*v, 'x'), 'y'))", scales=1, name='v_rms')
+profiles.add_task("sqrt(integ(integ(w*w, 'x'), 'y'))", scales=1, name='w_rms')
+profiles.add_task("sqrt(integ(integ(ze*ze, 'x'), 'y'))", scales=1, name='ze_rms')
 
-snap.add_task("interp(tf, z=0.0)", scales=1, name='f bottom')
-snap.add_task("interp(tf, z=0.5)", scales=1, name='f midplane')
-snap.add_task("interp(tf, z=1.0)", scales=1, name='f top')
-
-series = solver.evaluator.add_file_handler('inf/series', sim_dt=0.2, max_writes=100)
-series.add_task("interp(-M(w,tf), z=0.5)", scales=1, name='Nu')
+series = solver.evaluator.add_file_handler('series', sim_dt=0.2, max_writes=100)
+series.add_task("interp(-tz, z=0.5)", scales=1, name='Nu')
 
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
 flow.add_property("interp(-tz,z=1.0)", name='Nu')
 
-while solver.ok:
+try:
+    logger.info('Starting loop')
+    start_time = time.time()
+    while solver.ok:
 
-    dt = CFL.compute_dt()
-    dt = solver.step(dt)
+        dt = CFL.compute_dt()
+        dt = solver.step(dt)
 
-    if(solver.iteration%10 == 0):
-        logger.info('Iteration: %i, Time step: %e' %(solver.iteration, dt))
-        logger.info('Nu = %f' %flow.max('Nu'))
-
+        if (solver.iteration-1)%10 == 0:
+            logger.info('Iteration: %i, Step size: %e, Run time: %f' %(solver.iteration, dt, solver.sim_time))
+            logger.info('Nu = %f' %(flow.max('Nu')))
+except:
+    logger.error('Exception raised, triggering end of main loop.')
+    raise
+finally:
+    end_time = time.time()
+    logger.info('Iterations: %i' %solver.iteration)
+    logger.info('Sim end time: %f' %solver.sim_time)
+    logger.info('Run time: %.2f sec' %(end_time-start_time))
+    logger.info('Run time: %f cpu-hr' %((end_time-start_time)/60/60*domain.dist.comm_cart.size))
