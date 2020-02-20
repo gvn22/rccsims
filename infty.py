@@ -34,13 +34,20 @@ for h in root.handlers:
     h.setLevel("INFO")
 logger = logging.getLogger(__name__)
 
-Nx,Ny   = (64,64)
-Nz      = 64
-Lc      = 4.8154
-Lx,Ly   = (20.0*Lc,20.0*Lc)
+import yaml
+
+with open(r'input.yaml') as file:
+    params = yaml.load(file, Loader=yaml.FullLoader)
+
+Nx,Ny   = (params['nx'],params['nx'])
+Nz      = params['nz']
+Lx,Ly   = (params['lx']*params['lc'],params['lx']*params['lc'])
 Lz      = 1.0
 Axy     = Lx*Ly
-Ra      = 20.0
+Ra      = params['ra']
+Pr      = params['pr']
+
+logger.info('Parameters loaded for case: %s' %(params['case']))
 
 x_basis = de.Fourier('x', Nx, interval=(0.0,Lx), dealias=3/2)
 y_basis = de.Fourier('y', Ny, interval=(0.0,Ly), dealias=3/2)  
