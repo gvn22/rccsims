@@ -5,12 +5,10 @@ in a plane layer with high aspect ratio.
 Reduced asymptotic low Rossby problem equations from:
 Sprague, Julien, Knobloch and Werne (2006) JFM
 
-Infinite Pr case: Equations 2.29(a-c) + 3.2
-
 Parameters:
     Axy Transverse section area
     Ra  Scaled Rayleigh number
-    Lc  Critical wavelength
+    Pr  Prandtl number
 
 Variables:
     tf  Temperature fluctuation
@@ -69,17 +67,41 @@ problem.parameters['Axy']           = Axy
 problem.substitutions['J(A,B)']     = "dx(A)*dy(B) - dy(A)*dx(B)"
 problem.substitutions['L(A)']       = "dx(dx(A)) + dy(dy(A))"
 problem.substitutions['D(A)']       = "d(A, x=4) + 2.0*d(A, x=2, y=2) + d(A, y=4)"
-problem.substitutions['M(A,B)']     = "- 1 + integ(integ((A*B - integ(A*B,'z')), 'y'),'x')/Axy"
+problem.substitutions['M(A,B)']     = "(1.0/Axy)*integ(integ((A*B - integ(A*B,'z')), 'y'),'x')"
 
-problem.add_equation("dt(tf) - L(tf)        = - J(si,tf) - w*tz")
-problem.add_equation("tz                    = M(w,tf)")
-problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
-problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
-problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
-problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
-problem.add_equation("u + dy(si)            = 0")
-problem.add_equation("v - dx(si)            = 0")
-problem.add_equation("ze - L(si)            = 0")
+if Pr == 'inf':
+
+    logger.info('Using infinite Prandtl reduced equations 2.29[abc] + 3.2')
+
+    problem.add_equation("dt(tf) - L(tf)        = - J(si,tf) - w*tz")
+    problem.add_equation("tz                    = - 1 + M(w,tf)")
+    problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("u + dy(si)            = 0")
+    problem.add_equation("v - dx(si)            = 0")
+    problem.add_equation("ze - L(si)            = 0")
+
+elif Pr >= 1:
+
+    logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
+    
+    problem.parameters['Pr']        = Pr
+
+    problem.add_equation("dt(w) + dz(si) - (Ra/Pr)*tf - L(w)    = J(si,w)",         condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("w                                     = 0",               condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dt(L(si)) - dz(w) - D(si)             = - J(si,L(si))",   condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("si                                    = 0",               condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dt(tf) - (1.0/Pr)*L(tf)               = - J(si,tf) - w*tz")
+    problem.add_equation("tz                                    = - 1 + Pr*M(w,tf)")
+    problem.add_equation("u + dy(si)                            = 0")
+    problem.add_equation("v - dx(si)                            = 0")
+    problem.add_equation("ze - L(si)                            = 0")
+
+else:
+
+    logger.info('That does not make sense!')
 
 ts      = de.timesteppers.RK443
 solver  = problem.build_solver(ts)
@@ -99,10 +121,10 @@ tz['g'] = -1.0
 # tf = solver.state['tf']
 # tf['g'] = np.random.rand(*tf['g'].shape)
 
-dt = 5e-4
+dt = np.float(params['dt'])
 
-solver.stop_sim_time    = 1000
-solver.stop_wall_time   = 12*60.
+solver.stop_sim_time    = params['st']
+solver.stop_wall_time   = params['wt']*60.
 solver.stop_iteration   = np.inf
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,

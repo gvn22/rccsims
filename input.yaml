@@ -1,0 +1,21 @@
+case: Ra20Prinf
+
+# Grid
+  # Nx, Ny -> nx = ny, Nz = nz
+  # Lx, Ly -> lx*lc = ly*lc
+
+nx: 64
+nz: 64
+lx: 10
+lc: 4.8154
+ra: 20
+pr: 1
+
+# Time
+  # dt: initial timestep
+  # st: final simulation time
+  # wt: final wall time
+
+dt: 5e-4
+st: 200
+wt: 12.0
