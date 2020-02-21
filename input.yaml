@@ -1,4 +1,10 @@
 case: Ra20Prinf
+mode: INFO
+
+# Numbers
+
+pr: inf
+ra: 20
 
 # Grid
   # Nx, Ny -> nx = ny, Nz = nz
@@ -6,16 +12,14 @@ case: Ra20Prinf
 
 nx: 64
 nz: 64
-lx: 10
+lx: 20
 lc: 4.8154
-ra: 20
-pr: 1
 
 # Time
   # dt: initial timestep
   # st: final simulation time
   # wt: final wall time
 
-dt: 5e-4
+dt: 1e-2
 st: 200
 wt: 12.0

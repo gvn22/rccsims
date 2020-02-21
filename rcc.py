@@ -1,4 +1,5 @@
 """
+
 Rotationally constrained thermal convection
 in a plane layer with high aspect ratio.
 
@@ -14,28 +15,29 @@ Variables:
     tf  Temperature fluctuation
     tz  Mean vertical temperature gradient
     si   Pressure/streamfunction
-    w   Vertical velocity
+    w   Vertical velocity/Lap perp phi
 
 Diagnostics:
-    u,v Velocity
+    u,v Horizontal velocity components
     ze  Vertical vorticity
+    
 """
 
 import numpy as np
 from dedalus import public as de
 from dedalus.extras import flow_tools
 
-import time
-import logging
-root = logging.root
-for h in root.handlers:
-    h.setLevel("INFO")
-logger = logging.getLogger(__name__)
-
 import yaml
 
 with open(r'input.yaml') as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
+
+import time
+import logging
+root = logging.root
+for h in root.handlers:
+    h.setLevel(params['mode'])
+logger = logging.getLogger(__name__)
 
 Nx,Ny   = (params['nx'],params['nx'])
 Nz      = params['nz']
@@ -54,10 +56,10 @@ domain  = de.Domain([x_basis, y_basis, z_basis], grid_dtype=np.float64)
 
 variables                           = ['tf','w','si','u','v','ze','tz']
 problem                             = de.IVP(domain, variables=variables, time='t')
-problem.meta['tf']['z']['parity']   = -1
-problem.meta['w']['z']['parity']    = -1
-problem.meta['tz']['z']['parity']   = +1
 problem.meta['si']['z']['parity']   = +1
+problem.meta['w']['z']['parity']    = -1
+problem.meta['tf']['z']['parity']   = -1
+problem.meta['tz']['z']['parity']   = +1
 problem.meta['u']['z']['parity']    = +1
 problem.meta['v']['z']['parity']    = +1
 problem.meta['ze']['z']['parity']   = +1
@@ -73,17 +75,17 @@ if Pr == 'inf':
 
     logger.info('Using infinite Prandtl reduced equations 2.29[abc] + 3.2')
 
+    problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
     problem.add_equation("dt(tf) - L(tf)        = - J(si,tf) - w*tz")
     problem.add_equation("tz                    = - 1 + M(w,tf)")
-    problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
-    problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
-    problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
-    problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
     problem.add_equation("u + dy(si)            = 0")
     problem.add_equation("v - dx(si)            = 0")
     problem.add_equation("ze - L(si)            = 0")
 
-elif Pr >= 1:
+elif Pr >= 0:
 
     logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
     
@@ -101,7 +103,7 @@ elif Pr >= 1:
 
 else:
 
-    logger.info('That does not make sense!')
+    logger.info('Negative Prandtl number!')
 
 ts      = de.timesteppers.RK443
 solver  = problem.build_solver(ts)
@@ -131,11 +133,12 @@ CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
                             max_change=1.25, min_change=0.5, max_dt=0.1, threshold=0.05)
 CFL.add_velocities(('u', 'v','w'))
 
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.05, max_writes=10, mode='overwrite')
+# Output
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10, mode='overwrite')
 snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bottom')
 snapshots.add_task("interp(w, y=0.5)",  scales=1, name='w vertical')
-snapshots.add_task("interp(tf, y=0.5)", scales=1, name='tf vertical')
 snapshots.add_task("interp(tf, z=0.0)", scales=1, name='tf bottom')
+snapshots.add_task("interp(tf, z=0.5)", scales=1, name='tf mid')
 snapshots.add_task("interp(tf, z=1.0)", scales=1, name='tf top')
 
 profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.2, max_writes=100)
@@ -144,6 +147,7 @@ profiles.add_task("sqrt(integ(integ(u*u, 'x'), 'y'))", scales=1, name='u_rms')
 profiles.add_task("sqrt(integ(integ(v*v, 'x'), 'y'))", scales=1, name='v_rms')
 profiles.add_task("sqrt(integ(integ(w*w, 'x'), 'y'))", scales=1, name='w_rms')
 profiles.add_task("sqrt(integ(integ(ze*ze, 'x'), 'y'))", scales=1, name='ze_rms')
+profiles.add_task("tz", scales=1, name='tz')
 
 series = solver.evaluator.add_file_handler('series', sim_dt=0.2, max_writes=100)
 series.add_task("interp(-tz, z=0.5)", scales=1, name='Nu')
