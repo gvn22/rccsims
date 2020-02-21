@@ -20,6 +20,7 @@ lc: 4.8154
   # st: final simulation time
   # wt: final wall time
 
-dt: 1e-2
+dt: 1e-4
 st: 200
 wt: 12.0
+it: 100

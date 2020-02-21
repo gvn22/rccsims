@@ -39,10 +39,12 @@ for h in root.handlers:
     h.setLevel(params['mode'])
 logger = logging.getLogger(__name__)
 
+pi = np.pi
+
 Nx,Ny   = (params['nx'],params['nx'])
 Nz      = params['nz']
 Lx,Ly   = (params['lx']*params['lc'],params['lx']*params['lc'])
-Lz      = 1.0
+Lz      = pi
 Axy     = Lx*Ly
 Ra      = params['ra']
 Pr      = params['pr']
@@ -54,12 +56,12 @@ y_basis = de.Fourier('y', Ny, interval=(0.0,Ly), dealias=3/2)
 z_basis = de.SinCos ('z', Nz, interval=(0.0,Lz), dealias=3/2)
 domain  = de.Domain([x_basis, y_basis, z_basis], grid_dtype=np.float64)
 
-variables                           = ['tf','w','si','u','v','ze','tz']
+variables                           = ['tf','w','si','u','v','ze']
 problem                             = de.IVP(domain, variables=variables, time='t')
 problem.meta['si']['z']['parity']   = +1
 problem.meta['w']['z']['parity']    = -1
 problem.meta['tf']['z']['parity']   = -1
-problem.meta['tz']['z']['parity']   = +1
+# problem.meta['tz']['z']['parity']   = +1
 problem.meta['u']['z']['parity']    = +1
 problem.meta['v']['z']['parity']    = +1
 problem.meta['ze']['z']['parity']   = +1
@@ -71,89 +73,88 @@ problem.substitutions['L(A)']       = "dx(dx(A)) + dy(dy(A))"
 problem.substitutions['D(A)']       = "d(A, x=4) + 2.0*d(A, x=2, y=2) + d(A, y=4)"
 problem.substitutions['M(A,B)']     = "(1.0/Axy)*integ(integ((A*B - integ(A*B,'z')), 'y'),'x')"
 
-if Pr == 'inf':
+# if Pr == 'inf':
 
-    logger.info('Using infinite Prandtl reduced equations 2.29[abc] + 3.2')
+logger.info('Using infinite Prandtl reduced equations 2.29[abc] + 3.2')
 
-    problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
-    problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
-    problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
-    problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
-    problem.add_equation("dt(tf) - L(tf)        = - J(si,tf) - w*tz")
-    problem.add_equation("tz                    = - 1 + M(w,tf)")
-    problem.add_equation("u + dy(si)            = 0")
-    problem.add_equation("v - dx(si)            = 0")
-    problem.add_equation("ze - L(si)            = 0")
+problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
+problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
+problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
+problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
+problem.add_equation("dt(tf) - L(tf) - w    = - J(si,tf) - w*M(w,tf)")
+# problem.add_equation("tz                    = M(w,tf)")
+problem.add_equation("u + dy(si)            = 0")
+problem.add_equation("v - dx(si)            = 0")
+problem.add_equation("ze - L(si)            = 0")
 
-elif Pr >= 0:
+# elif Pr >= 0:
 
-    logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
+#     logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
     
-    problem.parameters['Pr']        = Pr
+#     problem.parameters['Pr']        = Pr
 
-    problem.add_equation("dt(w) + dz(si) - (Ra/Pr)*tf - L(w)    = J(si,w)",         condition="(nx != 0) and (ny != 0)")
-    problem.add_equation("w                                     = 0",               condition="(nx == 0) or (ny == 0)")
-    problem.add_equation("dt(L(si)) - dz(w) - D(si)             = - J(si,L(si))",   condition="(nx != 0) and (ny != 0)")
-    problem.add_equation("si                                    = 0",               condition="(nx == 0) or (ny == 0)")
-    problem.add_equation("dt(tf) - (1.0/Pr)*L(tf)               = - J(si,tf) - w*tz")
-    problem.add_equation("tz                                    = - 1 + Pr*M(w,tf)")
-    problem.add_equation("u + dy(si)                            = 0")
-    problem.add_equation("v - dx(si)                            = 0")
-    problem.add_equation("ze - L(si)                            = 0")
+#     problem.add_equation("dt(w) + dz(si) - (Ra/Pr)*tf - L(w)    = J(si,w)",         condition="(nx != 0) and (ny != 0)")
+#     problem.add_equation("w                                     = 0",               condition="(nx == 0) or (ny == 0)")
+#     problem.add_equation("dt(L(si)) - dz(w) - D(si)             = - J(si,L(si))",   condition="(nx != 0) and (ny != 0)")
+#     problem.add_equation("si                                    = 0",               condition="(nx == 0) or (ny == 0)")
+#     problem.add_equation("dt(tf) - (1.0/Pr)*L(tf)               = - J(si,tf) - w*tz")
+#     problem.add_equation("tz                                    = - 1 + Pr*M(w,tf)")
+#     problem.add_equation("u + dy(si)                            = 0")
+#     problem.add_equation("v - dx(si)                            = 0")
+#     problem.add_equation("ze - L(si)                            = 0")
 
-else:
+# else:
 
-    logger.info('Negative Prandtl number!')
+#     logger.info('Negative Prandtl number!')
 
-ts      = de.timesteppers.RK443
+ts      = de.timesteppers.RK222
 solver  = problem.build_solver(ts)
 logger.info('Building solver... success!')
 
 # Initial Condition
 gshape  = domain.dist.grid_layout.global_shape(scales=1)
 slices  = domain.dist.grid_layout.slices(scales=1)
-rand    = np.random.RandomState(seed=42)
+rand    = np.random.RandomState(seed=12)
 noise   = rand.standard_normal(gshape)[slices]
-pert    = 1e-1*noise
+z       = domain.grid(2)
+kz      = pi/Lz
+pert    = 1e-1*noise*np.sin(kz*z)
 tf      = solver.state['tf']
-tz      = solver.state['tz']
 tf['g'] = pert
-tz['g'] = -1.0
-
-# tf = solver.state['tf']
-# tf['g'] = np.random.rand(*tf['g'].shape)
 
 dt = np.float(params['dt'])
 
 solver.stop_sim_time    = params['st']
 solver.stop_wall_time   = params['wt']*60.
-solver.stop_iteration   = np.inf
+solver.stop_iteration   = params['it']
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=0.5,
-                            max_change=1.25, min_change=0.5, max_dt=0.1, threshold=0.05)
-CFL.add_velocities(('u', 'v','w'))
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=5, safety=1.5,
+                            max_change=1.5, min_change=0.5, max_dt=0.05, threshold=0.05)
+CFL.add_velocities(('u','v','w'))
 
 # Output
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10, mode='overwrite')
-snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bottom')
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10)
+snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
+snapshots.add_task("interp(ze, z=0.5)", scales=1, name='ze mid')
+snapshots.add_task("interp(ze, z=1.0)", scales=1, name='ze top')
 snapshots.add_task("interp(w, y=0.5)",  scales=1, name='w vertical')
-snapshots.add_task("interp(tf, z=0.0)", scales=1, name='tf bottom')
+snapshots.add_task("interp(tf, z=0.0)", scales=1, name='tf bot')
 snapshots.add_task("interp(tf, z=0.5)", scales=1, name='tf mid')
 snapshots.add_task("interp(tf, z=1.0)", scales=1, name='tf top')
 
-profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.2, max_writes=100)
+profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.1, max_writes=100)
 profiles.add_task("sqrt(integ(integ(tf*tf, 'x'), 'y'))", scales=1, name='tf_rms')
 profiles.add_task("sqrt(integ(integ(u*u, 'x'), 'y'))", scales=1, name='u_rms')
 profiles.add_task("sqrt(integ(integ(v*v, 'x'), 'y'))", scales=1, name='v_rms')
 profiles.add_task("sqrt(integ(integ(w*w, 'x'), 'y'))", scales=1, name='w_rms')
 profiles.add_task("sqrt(integ(integ(ze*ze, 'x'), 'y'))", scales=1, name='ze_rms')
-profiles.add_task("tz", scales=1, name='tz')
+profiles.add_task("-1 + M(w,tf)", scales=1, name='tz')
 
 series = solver.evaluator.add_file_handler('series', sim_dt=0.2, max_writes=100)
-series.add_task("interp(-tz, z=0.5)", scales=1, name='Nu')
+series.add_task("1 - interp(M(w,tf), z=1.0)", scales=1, name='Nu')
 
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
-flow.add_property("interp(-tz,z=1.0)", name='Nu')
+flow.add_property("1 - interp(M(w,tf),z=1.0)", name='Nu')
 
 try:
     logger.info('Starting loop')
