@@ -73,39 +73,35 @@ problem.substitutions['L(A)']       = "dx(dx(A)) + dy(dy(A))"
 problem.substitutions['D(A)']       = "d(A, x=4) + 2.0*d(A, x=2, y=2) + d(A, y=4)"
 problem.substitutions['M(A,B)']     = "(1.0/Axy)*integ(integ((A*B - integ(A*B,'z')), 'y'),'x')"
 
-# if Pr == 'inf':
+if Pr == 'inf':
 
-logger.info('Using infinite Prandtl reduced equations 2.29[abc] + 3.2')
+    logger.info('Using infinite Prandtl reduced equations 2.29[abc] + 3.2')
 
-problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
-problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
-problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
-problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
-problem.add_equation("dt(tf) - L(tf) - w    = - J(si,tf) - w*M(w,tf)")
-# problem.add_equation("tz                    = M(w,tf)")
-problem.add_equation("u + dy(si)            = 0")
-problem.add_equation("v - dx(si)            = 0")
-problem.add_equation("ze - L(si)            = 0")
+    problem.add_equation("dz(w) + D(si)         = 0", condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("si                    = 0", condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("w                     = 0", condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dt(tf) - L(tf) - w    = - J(si,tf) - w*M(w,tf)")
+    # problem.add_equation("tz                    = M(w,tf)")
+    problem.add_equation("u + dy(si)            = 0")
+    problem.add_equation("v - dx(si)            = 0")
+    problem.add_equation("ze - L(si)            = 0")
 
-# elif Pr >= 0:
+else:
 
-#     logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
+    logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
     
-#     problem.parameters['Pr']        = Pr
+    problem.parameters['Pr']        = Pr
 
-#     problem.add_equation("dt(w) + dz(si) - (Ra/Pr)*tf - L(w)    = J(si,w)",         condition="(nx != 0) and (ny != 0)")
-#     problem.add_equation("w                                     = 0",               condition="(nx == 0) or (ny == 0)")
-#     problem.add_equation("dt(L(si)) - dz(w) - D(si)             = - J(si,L(si))",   condition="(nx != 0) and (ny != 0)")
-#     problem.add_equation("si                                    = 0",               condition="(nx == 0) or (ny == 0)")
-#     problem.add_equation("dt(tf) - (1.0/Pr)*L(tf)               = - J(si,tf) - w*tz")
-#     problem.add_equation("tz                                    = - 1 + Pr*M(w,tf)")
-#     problem.add_equation("u + dy(si)                            = 0")
-#     problem.add_equation("v - dx(si)                            = 0")
-#     problem.add_equation("ze - L(si)                            = 0")
-
-# else:
-
-#     logger.info('Negative Prandtl number!')
+    problem.add_equation("dt(w) + dz(si) - (Ra/Pr)*tf - L(w)    = J(si,w)",         condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("w                                     = 0",               condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dt(L(si)) - dz(w) - D(si)             = - J(si,L(si))",   condition="(nx != 0) and (ny != 0)")
+    problem.add_equation("si                                    = 0",               condition="(nx == 0) or (ny == 0)")
+    problem.add_equation("dt(tf) - (1.0/Pr)*L(tf) - w           = - J(si,tf) - w*Pr*M(w,tf)")
+    # problem.add_equation("tz                                    = - 1 + Pr*M(w,tf)")
+    problem.add_equation("u + dy(si)                            = 0")
+    problem.add_equation("v - dx(si)                            = 0")
+    problem.add_equation("ze - L(si)                            = 0")
 
 ts      = de.timesteppers.RK222
 solver  = problem.build_solver(ts)

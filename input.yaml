@@ -3,7 +3,7 @@ mode: INFO
 
 # Numbers
 
-pr: inf
+pr: 1
 ra: 20
 
 # Grid
