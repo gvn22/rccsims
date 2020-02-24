@@ -3,8 +3,8 @@ mode: INFO
 
 # Numbers
 
-pr: 1
-ra: 20
+pr: inf
+ra: 2.0
 
 # Grid
   # Nx, Ny -> nx = ny, Nz = nz
@@ -20,7 +20,7 @@ lc: 4.8154
   # st: final simulation time
   # wt: final wall time
 
-dt: 1e-4
+dt: 1e-2
 st: 200
 wt: 12.0
-it: 100
+it: 10000
