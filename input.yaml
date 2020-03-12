@@ -3,8 +3,8 @@ mode: INFO
 
 # Numbers
 
-pr: inf
-ra: 2.0
+pr: 1.0
+ra: 20.0
 
 # Grid
   # Nx, Ny -> nx = ny, Nz = nz
@@ -14,6 +14,8 @@ nx: 64
 nz: 64
 lx: 20
 lc: 4.8154
+px: 1
+pz: 6
 
 # Time
   # dt: initial timestep

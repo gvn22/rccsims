@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 pi = np.pi
 
+Px,Py,Pz = (params['px'],params['px'],params['pz'])
 Nx,Ny   = (params['nx'],params['nx'])
 Nz      = params['nz']
 Lx,Ly   = (params['lx']*params['lc'],params['lx']*params['lc'])
@@ -56,7 +57,7 @@ logger.info('Parameters loaded for case: %s' %(params['case']))
 x_basis = de.Fourier('x', Nx, interval=(0.0,Lx), dealias=3/2)
 y_basis = de.Fourier('y', Ny, interval=(0.0,Ly), dealias=3/2)  
 z_basis = de.SinCos ('z', Nz, interval=(0.0,Lz), dealias=3/2)
-domain  = de.Domain([x_basis, y_basis, z_basis], grid_dtype=np.float64)
+domain  = de.Domain([x_basis, y_basis, z_basis], grid_dtype=np.float64, mesh=[Px,Py,Pz])
 
 variables                           = ['tf','w','si','u','v','ze']
 problem                             = de.IVP(domain, variables=variables, time='t')
@@ -76,7 +77,7 @@ problem.substitutions['L(A)']       = "dx(dx(A)) + dy(dy(A))"
 problem.substitutions['D(A)']       = "L(L(A))"
 # problem.substitutions['D(A)']       = "d(A, x=4) + 2.0*d(A, x=2, y=2) + d(A, y=4)"
 problem.substitutions['M(A,B)']     = "(1.0/Axy)*integ(integ(A*B - integ(A*B,'z'), 'y'),'x')"
-problem.substitutions['H(A)']       = "(1.0/Axy)*integ(integ(A, 'y'),'x')"
+problem.substitutions['XY(A)']       = "(1.0/Axy)*integ(integ(A, 'y'),'x')"
 problem.substitutions['Z(A)']       = "(1.0/Lz)*integ(A,'z')"
 
 if Pr == 'inf':
@@ -87,8 +88,7 @@ if Pr == 'inf':
     problem.add_equation("si                    = 0", condition="(nx == 0) and (ny == 0)")
     problem.add_equation("dz(si) - Ra*tf - L(w) = 0", condition="(nx != 0) or (ny != 0)")
     problem.add_equation("w                     = 0", condition="(nx == 0) and (ny == 0)")
-    problem.add_equation("dt(tf) - L(tf) - w    = - J(si,tf) - w*H(w*tf - Z(w*tf))")
-    # problem.add_equation("tz                    = M(w,tf)")
+    problem.add_equation("dt(tf) - L(tf) - w    = - J(si,tf) - w*XY(w*tf - Z(w*tf))")
     problem.add_equation("u + dy(si)            = 0")
     problem.add_equation("v - dx(si)            = 0")
     problem.add_equation("ze - L(si)            = 0")
@@ -103,13 +103,12 @@ else:
     problem.add_equation("w                                     = 0",               condition="(nx == 0) and (ny == 0)")
     problem.add_equation("dt(L(si)) - dz(w) - D(si)             = - J(si,L(si))",   condition="(nx != 0) or (ny != 0)")
     problem.add_equation("si                                    = 0",               condition="(nx == 0) and (ny == 0)")
-    problem.add_equation("dt(tf) - (1.0/Pr)*L(tf) - w           = - J(si,tf) - w*Pr*M(w,tf)")
-    # problem.add_equation("tz                                    = - 1 + Pr*M(w,tf)")
+    problem.add_equation("dt(tf) - (1.0/Pr)*L(tf) - w           = - J(si,tf) - w*Pr*XY(w*tf - Z(w*tf))")
     problem.add_equation("u + dy(si)                            = 0")
     problem.add_equation("v - dx(si)                            = 0")
     problem.add_equation("ze - L(si)                            = 0")
 
-ts      = de.timesteppers.RK443
+ts      = de.timesteppers.MCNAB2
 solver  = problem.build_solver(ts)
 logger.info('Building solver... success!')
 
@@ -141,7 +140,7 @@ CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=1,
 CFL.add_velocities(('u','v','w'))
 
 # Output
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10)
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100)
 snapshots.add_system(solver.state)
 snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
 snapshots.add_task("interp(ze, z=0.5)", scales=1, name='ze mid')
@@ -151,19 +150,21 @@ snapshots.add_task("interp(tf, z=0.0)", scales=1, name='tf bot')
 snapshots.add_task("interp(tf, z=0.5)", scales=1, name='tf mid')
 snapshots.add_task("interp(tf, z=1.0)", scales=1, name='tf top')
 
-profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.1, max_writes=100)
-profiles.add_task("sqrt(integ(integ(tf*tf, 'x'), 'y'))", scales=1, name='tf_rms')
-profiles.add_task("sqrt(integ(integ(u*u, 'x'), 'y'))", scales=1, name='u_rms')
-profiles.add_task("sqrt(integ(integ(v*v, 'x'), 'y'))", scales=1, name='v_rms')
-profiles.add_task("sqrt(integ(integ(w*w, 'x'), 'y'))", scales=1, name='w_rms')
-profiles.add_task("sqrt(integ(integ(ze*ze, 'x'), 'y'))", scales=1, name='ze_rms')
-profiles.add_task("-1 + M(w,tf)", scales=1, name='tz')
+profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.2, max_writes=100)
+profiles.add_task("sqrt(XY(tf**2))", scales=1, name='tf_rms')
+profiles.add_task("sqrt(XY(u**2))", scales=1, name='u_rms')
+profiles.add_task("sqrt(XY(v**2))", scales=1, name='v_rms')
+profiles.add_task("sqrt(XY(w**2))", scales=1, name='w_rms')
+profiles.add_task("sqrt(XY(ze**2))", scales=1, name='ze_rms')
+profiles.add_task("-1 + XY(w*tf - Z(w*tf))", scales=1, name='tz')
 
 series = solver.evaluator.add_file_handler('series', sim_dt=0.2, max_writes=100)
-series.add_task("1 - interp(M(w,tf), z=1.0)", scales=1, name='Nu')
+series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=1.0)", scales=1, name='th_one')
+series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=0.5)", scales=1, name='th_half')
+series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=0.0)", scales=1, name='th_zero')
 
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
-flow.add_property("1 - interp(M(w,tf),z=1.0)", name='Nu')
+flow.add_property("1 - interp(XY(w*tf - Z(w*tf)),z=1.0)", name='Nu')
 
 try:
     logger.info('Starting loop')
