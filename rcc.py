@@ -51,11 +51,13 @@ Lz      = 1.0
 Axy     = Lx*Ly
 Ra      = params['ra']
 Pr      = params['pr']
+δ       = params['δ']
+Nb      = params['Nb']
 
 logger.info('Parameters loaded for case: %s' %(params['case']))
 
 x_basis = de.Fourier('x', Nx, interval=(0.0,Lx), dealias=3/2)
-y_basis = de.Fourier('y', Ny, interval=(0.0,Ly), dealias=3/2)  
+y_basis = de.Fourier('y', Ny, interval=(0.0,Ly), dealias=3/2)
 z_basis = de.SinCos ('z', Nz, interval=(0.0,Lz), dealias=3/2)
 domain  = de.Domain([x_basis, y_basis, z_basis], grid_dtype=np.float64, mesh=[Px,Py,Pz])
 
@@ -70,6 +72,8 @@ problem.meta['v']['z']['parity']    = +1
 problem.meta['ze']['z']['parity']   = +1
 problem.parameters['Ra']            = Ra
 problem.parameters['Axy']           = Axy
+problem.parameters['Lx']            = Lx
+problem.parameters['Ly']            = Ly
 problem.parameters['Lz']            = Lz
 
 problem.substitutions['J(A,B)']     = "dx(A)*dy(B) - dy(A)*dx(B)"
@@ -113,21 +117,30 @@ solver  = problem.build_solver(ts)
 logger.info('Building solver... success!')
 
 # Initial Condition
-gshape  = domain.dist.grid_layout.global_shape(scales=1)
-slices  = domain.dist.grid_layout.slices(scales=1)
-rand    = np.random.RandomState(seed=12)
-noise   = rand.standard_normal(gshape)[slices]
-z       = domain.grid(2)
-# kz      = pi/Lz
-# pert    = 1e-2*noise*np.sin(z)
-pert    = 1e-1*noise
-tf      = solver.state['tf']
-tf['g'] = pert
-
+# gshape  = domain.dist.grid_layout.global_shape(scales=1)
+# slices  = domain.dist.grid_layout.slices(scales=1)
+# rand    = np.random.RandomState(seed=12)
+# noise   = rand.standard_normal(gshape)[slices]
+# z       = domain.grid(2)
+# # kz      = pi/Lz
+# # pert    = 1e-2*noise*np.sin(z)
+# pert    = 1e-1*noise
 # tf      = solver.state['tf']
-# tf['g'] = np.random.rand(*tf.shape)
+# tf['g'] = pert
 
-# print (z)
+# Davidson's blobs
+x,y,z   = domain.all_grids()
+nblobs  = int(Nb/(Px*Py*Pz))
+δblobs  = np.random.uniform(δ/2.0,2.0*δ,nblobs)
+xblobs  = np.random.uniform(x[0,0,0],x[-1,0,0],nblobs)
+yblobs  = np.random.uniform(y[0,0,0],y[0,-1,0],nblobs)
+zblobs  = np.random.uniform(Lz/2 - δ,Lz/2 + δ,nblobs)
+
+tf      = solver.state['tf']
+# tf['g'] = 0.0
+for xi,yi,zi,δi in zip(xblobs,yblobs,zblobs,δblobs):
+
+    tf['g'] += np.exp(-((x - xi)**2 + (y - yi)**2 + (z - zi)**2)/δi**2)
 
 dt = np.float(params['dt'])
 
@@ -146,9 +159,9 @@ snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
 snapshots.add_task("interp(ze, z=0.5)", scales=1, name='ze mid')
 snapshots.add_task("interp(ze, z=1.0)", scales=1, name='ze top')
 snapshots.add_task("interp(w, y=0.5)",  scales=1, name='w vertical')
-snapshots.add_task("interp(tf, z=0.0)", scales=1, name='tf bot')
+snapshots.add_task("interp(tf, z=0.4)", scales=1, name='tf bot')
 snapshots.add_task("interp(tf, z=0.5)", scales=1, name='tf mid')
-snapshots.add_task("interp(tf, z=1.0)", scales=1, name='tf top')
+snapshots.add_task("interp(tf, z=0.6)", scales=1, name='tf top')
 
 profiles = solver.evaluator.add_file_handler('profiles', sim_dt=0.2, max_writes=100)
 profiles.add_task("sqrt(XY(tf**2))", scales=1, name='tf_rms')
