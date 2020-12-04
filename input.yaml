@@ -17,6 +17,10 @@ lc: 4.8154
 px: 1
 pz: 6
 
+# IC parameters
+δ: 0.5
+Nb: 100
+
 # Time
   # dt: initial timestep
   # st: final simulation time
