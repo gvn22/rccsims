@@ -2,3 +2,8 @@ frames/
 snapshots/
 profiles/
 series/
+figures/
+
+ra20pr1/
+ra20pr8/
+*.png
