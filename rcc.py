@@ -152,7 +152,10 @@ else:
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=1,
                             max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
-CFL.add_velocities(('u','v','w'))
+CFL.add_velocity('u',0)
+CFL.add_velocity('v',1)
+
+# CFL.add_velocities(('u','v','w'))
 
 # Output
 snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100,mode=fh_mode)
