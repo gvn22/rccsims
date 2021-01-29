@@ -108,39 +108,57 @@ else:
     problem.add_equation("v - dx(si)                            = 0")
     problem.add_equation("ze - L(si)                            = 0")
 
-ts      = de.timesteppers.MCNAB2
+ts      = de.timesteppers.RKSMR
 solver  = problem.build_solver(ts)
 logger.info('Building solver... success!')
 
-# Initial Condition
-gshape  = domain.dist.grid_layout.global_shape(scales=1)
-slices  = domain.dist.grid_layout.slices(scales=1)
-rand    = np.random.RandomState(seed=12)
-noise   = rand.standard_normal(gshape)[slices]
-z       = domain.grid(2)
-# kz      = pi/Lz
-# pert    = 1e-2*noise*np.sin(z)
-pert    = 1e-1*noise
-tf      = solver.state['tf']
-tf['g'] = pert
+if not Path('restart.h5').exists():
 
-# tf      = solver.state['tf']
-# tf['g'] = np.random.rand(*tf.shape)
+    logger.info('Starting from scratch...')
 
-# print (z)
+    # Initial Condition
+    gshape  = domain.dist.grid_layout.global_shape(scales=1)
+    slices  = domain.dist.grid_layout.slices(scales=1)
+    rand    = np.random.RandomState(seed=12)
+    noise   = rand.standard_normal(gshape)[slices]
+    z       = domain.grid(2)
+    # kz      = pi/Lz
+    # pert    = 1e-2*noise*np.sin(z)
+    pert    = 1e-1*noise
+    tf      = solver.state['tf']
+    tf['g'] = pert
 
-dt = np.float(params['dt'])
+    dt = np.float(params['dt'])
 
-solver.stop_sim_time    = params['st']
-solver.stop_wall_time   = params['wt']*60.
-solver.stop_iteration   = params['it']
+    solver.stop_sim_time    = params['st']
+    solver.stop_wall_time   = params['wt']*60.
+    solver.stop_iteration   = params['it']
+
+    fh_mode = 'overwrite'
+
+else:
+
+    logger.info('Restarting ...')
+    write, last_dt = solver.load_state('restart.h5', -1)
+
+    dt = last_dt
+
+    solver.stop_sim_time    = params['st']
+    solver.stop_wall_time   = params['wt']*60.
+    solver.stop_iteration   = params['it']
+
+    fh_mode = 'append'
+
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=1,
                             max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
-CFL.add_velocities(('u','v','w'))
+CFL.add_velocity('u',0)
+CFL.add_velocity('v',1)
+
+# CFL.add_velocities(('u','v','w'))
 
 # Output
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100)
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100,mode=fh_mode)
 snapshots.add_system(solver.state)
 snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
 snapshots.add_task("interp(ze, z=0.5)", scales=1, name='ze mid')
