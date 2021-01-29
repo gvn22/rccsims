@@ -108,7 +108,7 @@ else:
     problem.add_equation("v - dx(si)                            = 0")
     problem.add_equation("ze - L(si)                            = 0")
 
-ts      = de.timesteppers.MCNAB2
+ts      = de.timesteppers.RKSMR
 solver  = problem.build_solver(ts)
 logger.info('Building solver... success!')
 
