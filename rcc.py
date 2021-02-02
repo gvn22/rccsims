@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 pi = np.pi
 
-Px,Py,Pz = (params['px'],params['px'],params['pz'])
+Px,Py,Pz = (params['px'],params['py'],params['pz'])
 Nx,Ny   = (params['nx'],params['nx'])
 Nz      = params['nz']
 Lx,Ly   = (params['lx']*params['lc'],params['lx']*params['lc'])
