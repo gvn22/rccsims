@@ -182,7 +182,9 @@ series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=0.5)", scales=1, name='th_half
 series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=0.0)", scales=1, name='th_zero')
 
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
-flow.add_property("1 - interp(XY(w*tf - Z(w*tf)),z=1.0)", name='Nu')
+nu_str = "1 - interp(XY(w*tf - Z(w*tf)),z=1.0)"
+flow.add_property(nu_str, name='Nu')
+series.add_task(nu_str, layout='g', name='Nu')
 
 try:
     logger.info('Starting loop')
