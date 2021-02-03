@@ -131,8 +131,8 @@ if not Path('restart.h5').exists():
     dt = np.float(params['dt'])
 
     solver.stop_sim_time    = params['st']
-    solver.stop_wall_time   = params['wt']*60.
-    solver.stop_iteration   = params['it']
+    solver.stop_wall_time   = params['wt']*60.*60.
+    solver.stop_iteration   = np.inf
 
     fh_mode = 'overwrite'
 
@@ -144,8 +144,8 @@ else:
     dt = last_dt
 
     solver.stop_sim_time    = params['st']
-    solver.stop_wall_time   = params['wt']*60.
-    solver.stop_iteration   = params['it']
+    solver.stop_wall_time   = params['wt']*60.*60.
+    solver.stop_iteration   = np.inf
 
     fh_mode = 'append'
 
