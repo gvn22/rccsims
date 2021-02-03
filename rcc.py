@@ -93,6 +93,8 @@ if Pr == 'inf':
     problem.add_equation("v - dx(si)            = 0")
     problem.add_equation("ze - L(si)            = 0")
 
+    nu_expr = "interp(1 - XY(w*tf - Z(w*tf))"
+
 else:
 
     logger.info('Using finite Prandtl reduced equations 2.27[abc] + 3.1')
@@ -107,6 +109,8 @@ else:
     problem.add_equation("u + dy(si)                            = 0")
     problem.add_equation("v - dx(si)                            = 0")
     problem.add_equation("ze - L(si)                            = 0")
+
+    nu_expr = "interp(1 - Pr*XY(w*tf - Z(w*tf))"
 
 ts      = de.timesteppers.RKSMR
 solver  = problem.build_solver(ts)
@@ -177,14 +181,12 @@ profiles.add_task("sqrt(XY(ze**2))", scales=1, name='ze_rms')
 profiles.add_task("-1 + XY(w*tf - Z(w*tf))", scales=1, name='tz')
 
 series = solver.evaluator.add_file_handler('series', sim_dt=0.2, max_writes=100)
-series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=1.0)", scales=1, name='th_one')
-series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=0.5)", scales=1, name='th_half')
-series.add_task("1 - interp(XY(w*tf - Z(w*tf)), z=0.0)", scales=1, name='th_zero')
+series.add_task(nu_expr+", z=1.0)", scales=1, name='th_one')
+series.add_task(nu_expr+", z=0.5)", scales=1, name='th_half')
+series.add_task(nu_expr+", z=0.0)", scales=1, name='th_zero')
 
 flow = flow_tools.GlobalFlowProperty(solver, cadence=10)
-nu_str = "1 - interp(XY(w*tf - Z(w*tf)),z=1.0)"
-flow.add_property(nu_str, name='Nu')
-series.add_task(nu_str, layout='g', name='Nu')
+flow.add_property(nu_expr+", z=0.0)", name='Nu')
 
 try:
     logger.info('Starting loop')
@@ -194,7 +196,7 @@ try:
         dt = CFL.compute_dt()
         dt = solver.step(dt)
 
-        if (solver.iteration-1)%100 == 0:
+        if (solver.iteration-1)%10 == 0:
             logger.info('Iteration: %i, Step size: %e, Run time: %f' %(solver.iteration, dt, solver.sim_time))
             logger.info('Nu = %f' %(flow.max('Nu')))
 except:
