@@ -7,16 +7,16 @@ pr: 1.0
 
 # Grid
   # Nx, Ny -> nx = ny, Nz = nz
-  # Lx, Ly -> lx*lc = lx*lc
   # px,py,pz
 
 nx: 64
-nz: 64
-lx: 10
-lc: 4.8154
+nz: 128
 px: 6
 py: 1
 pz: 1
+
+δ: 0.5
+Nb: 1000
 
 # Time
   # dt: initial timestep
