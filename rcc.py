@@ -150,8 +150,8 @@ else:
     fh_mode = 'append'
 
 
-CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=10, safety=1,
-                            max_change=1.5, min_change=0.5, max_dt=0.125, threshold=0.05)
+CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=5, safety=0.5,
+                            max_change=1.5, min_change=0.5, max_dt=0.05, threshold=0.05)
 CFL.add_velocity('u',0)
 CFL.add_velocity('v',1)
 
@@ -194,7 +194,7 @@ try:
         dt = CFL.compute_dt()
         dt = solver.step(dt)
 
-        if (solver.iteration-1)%10 == 0:
+        if (solver.iteration-1)%100 == 0:
             logger.info('Iteration: %i, Step size: %e, Run time: %f' %(solver.iteration, dt, solver.sim_time))
             logger.info('Nu = %f' %(flow.max('Nu')))
 except:
