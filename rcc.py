@@ -46,11 +46,14 @@ pi = np.pi
 Px,Py,Pz = (params['px'],params['py'],params['pz'])
 Nx,Ny   = (params['nx'],params['nx'])
 Nz      = params['nz']
-Lx,Ly   = (params['lx']*params['lc'],params['lx']*params['lc'])
-Lz      = 1.0
-Axy     = Lx*Ly
 Ra      = params['ra']
 Pr      = params['pr']
+δ       = params['δ']
+Nb      = params['Nb']
+Lx      = 50.0*δ
+Ly      = 50.0*δ
+Lz      = 150.0*δ
+Axy     = Lx*Ly
 
 logger.info('Parameters loaded for case: %s' %(params['case']))
 
@@ -121,16 +124,29 @@ if not Path('restart.h5').exists():
     logger.info('Starting from scratch...')
 
     # Initial Condition
-    gshape  = domain.dist.grid_layout.global_shape(scales=1)
-    slices  = domain.dist.grid_layout.slices(scales=1)
-    rand    = np.random.RandomState(seed=12)
-    noise   = rand.standard_normal(gshape)[slices]
-    z       = domain.grid(2)
-    # kz      = pi/Lz
-    # pert    = 1e-2*noise*np.sin(z)
-    pert    = 1e-1*noise
+    # gshape  = domain.dist.grid_layout.global_shape(scales=1)
+    # slices  = domain.dist.grid_layout.slices(scales=1)
+    # rand    = np.random.RandomState(seed=12)
+    # noise   = rand.standard_normal(gshape)[slices]
+    # z       = domain.grid(2)
+    # # kz      = pi/Lz
+    # # pert    = 1e-2*noise*np.sin(z)
+    # pert    = 1e-1*noise
+    # tf      = solver.state['tf']
+    # tf['g'] = pert
+    x,y,z   = domain.all_grids()
+    # nblobs  = int(Nb/(Px*Py*Pz))
+    nblobs  = Nb
+    δblobs  = np.random.uniform(δ/2.0,2.0*δ,nblobs)
+    xblobs  = np.random.uniform(x[0,0,0],x[-1,0,0],nblobs)
+    yblobs  = np.random.uniform(y[0,0,0],y[0,-1,0],nblobs)
+    zblobs  = np.random.uniform(Lz/2 - δ,Lz/2 + δ,nblobs)
+
     tf      = solver.state['tf']
-    tf['g'] = pert
+    # tf['g'] = 0.0
+    for xi,yi,zi,δi in zip(xblobs,yblobs,zblobs,δblobs):
+
+        tf['g'] += np.exp(-((x - xi)**2 + (y - yi)**2 + (z - zi)**2)/δi**2)
 
     dt = np.float(params['dt'])
 
@@ -156,14 +172,14 @@ else:
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=5, safety=0.5,
                             max_change=1.5, min_change=0.5, max_dt=0.05)
-CFL.add_velocity('u',0)
-CFL.add_velocity('v',1)
-
-# CFL.add_velocities(('u','v','w'))
+# CFL.add_velocity('u',0)
+# CFL.add_velocity('v',1)
+CFL.add_velocities(('u','v','w'))
 
 # Output
 snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100,mode=fh_mode)
 snapshots.add_system(solver.state)
+snapshots.add_task("u*(dy(w)-dz(v)) + v*(dz(u)-dx(w)) + w*(dx(v)-dy(u))", scales=1, name='h')
 snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
 snapshots.add_task("interp(ze, z=0.5)", scales=1, name='ze mid')
 snapshots.add_task("interp(ze, z=1.0)", scales=1, name='ze top')
