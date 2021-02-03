@@ -151,7 +151,7 @@ else:
 
 
 CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=5, safety=0.5,
-                            max_change=1.5, min_change=0.5, max_dt=0.05, threshold=0.05)
+                            max_change=1.5, min_change=0.5, max_dt=0.05)
 CFL.add_velocity('u',0)
 CFL.add_velocity('v',1)
 
