@@ -48,6 +48,7 @@ Nx,Ny   = (params['nx'],params['nx'])
 Nz      = params['nz']
 Ra      = params['ra']
 Pr      = params['pr']
+θ       = params['θ']
 δ       = params['δ']
 Nb      = params['Nb']
 Lx      = 50.0*δ
@@ -149,9 +150,10 @@ if not Path('restart.h5').exists():
     tf      = solver.state['tf']
     tf.set_scales(1)
     tf['g'] = 0.0
+
     for xi,yi,zi,δi in zip(xblobs,yblobs,zblobs,δblobs):
 
-        tf['g'] += np.exp(-((x - xi)**2 + (y - yi)**2 + (z - zi)**2)/δi**2)
+        tf['g'] += θ*np.exp(-((x - xi)**2 + (y - yi)**2 + (z - zi)**2)/δi**2)
 
     dt = np.float(params['dt'])
 
