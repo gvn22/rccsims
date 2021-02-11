@@ -134,16 +134,21 @@ if not Path('restart.h5').exists():
     # pert    = 1e-1*noise
     # tf      = solver.state['tf']
     # tf['g'] = pert
-    x,y,z   = domain.all_grids()
+    # x,y,z   = domain.all_grids()
+    x,y,z   = domain.grid(0),domain.grid(1),domain.grid(2)
     # nblobs  = int(Nb/(Px*Py*Pz))
     nblobs  = Nb
+    np.random.seed(10) # importantamente!
     δblobs  = np.random.uniform(δ/2.0,2.0*δ,nblobs)
-    xblobs  = np.random.uniform(x[0,0,0],x[-1,0,0],nblobs)
-    yblobs  = np.random.uniform(y[0,0,0],y[0,-1,0],nblobs)
-    zblobs  = np.random.uniform(Lz/2 - δ,Lz/2 + δ,nblobs)
+    # xblobs  = np.random.uniform(x[0,0,0],x[-1,0,0],nblobs)
+    # yblobs  = np.random.uniform(y[0,0,0],y[0,-1,0],nblobs)
+    xblobs  = np.random.uniform(0.0,Lx,nblobs)
+    yblobs  = np.random.uniform(0.0,Ly,nblobs)
+    zblobs  = np.random.uniform(Lz/2 - 2.8*δ ,Lz/2 + 2.8*δ,nblobs)
 
     tf      = solver.state['tf']
-    # tf['g'] = 0.0
+    tf.set_scales(1)
+    tf['g'] = 0.0
     for xi,yi,zi,δi in zip(xblobs,yblobs,zblobs,δblobs):
 
         tf['g'] += np.exp(-((x - xi)**2 + (y - yi)**2 + (z - zi)**2)/δi**2)
@@ -153,6 +158,7 @@ if not Path('restart.h5').exists():
     solver.stop_sim_time    = params['st']
     solver.stop_wall_time   = params['wt']*60.*60.
     solver.stop_iteration   = np.inf
+    # solver.stop_iteration   = 10
 
     fh_mode = 'overwrite'
 
