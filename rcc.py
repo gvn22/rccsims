@@ -162,7 +162,7 @@ CFL.add_velocity('v',1)
 # CFL.add_velocities(('u','v','w'))
 
 # Output
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100,mode=fh_mode)
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10,mode=fh_mode)
 snapshots.add_system(solver.state)
 snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
 snapshots.add_task("interp(ze, z=0.5)", scales=1, name='ze mid')
