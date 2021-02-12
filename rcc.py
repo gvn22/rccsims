@@ -185,7 +185,7 @@ CFL = flow_tools.CFL(solver, initial_dt=dt, cadence=5, safety=0.5,
 CFL.add_velocities(('u','v','w'))
 
 # Output
-snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=100,mode=fh_mode)
+snapshots = solver.evaluator.add_file_handler('snapshots', sim_dt=0.2, max_writes=10,mode=fh_mode)
 snapshots.add_system(solver.state)
 snapshots.add_task("u*(dy(w)-dz(v)) + v*(dz(u)-dx(w)) + w*(dx(v)-dy(u))", scales=1, name='h')
 snapshots.add_task("interp(ze, z=0.0)", scales=1, name='ze bot')
